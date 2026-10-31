@@ -68,13 +68,15 @@ restore_values() {
     done < "$STATE/cpu_online"
 
     while read -r policy key value; do
-        if [ "$key" = "governor" ]; then
-            node="/sys/devices/system/cpu/cpufreq/$policy/scaling_governor"
-        else
-            node="/sys/devices/system/cpu/cpufreq/$policy/scaling_max_freq"
-        fi
+        [ "$key" = "governor" ] || continue
+        node="/sys/devices/system/cpu/cpufreq/$policy/scaling_governor"
         write_value "$node" "$value"
     done < "$STATE/values"
+
+    # Match the original MahiruSleep screen-on frequency profile.
+    # These are fixed caps, not the hardware maximum.
+    write_value "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" 2000000
+    write_value "/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq" 2200000
 
     while read -r cpu online; do
         [ "$online" = "0" ] && write_value "/sys/devices/system/cpu/cpu$cpu/online" 0
