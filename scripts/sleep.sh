@@ -1,5 +1,6 @@
 #!/system/bin/sh
-MODDIR="${0%/*}/.."
+SCRIPT_DIR="$(CDPATH= cd -- "${0%/*}" 2>/dev/null && pwd)"
+MODDIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." 2>/dev/null && pwd)"
 STATE="$MODDIR/state"
 LOG="/data/local/tmp/mahirusleep-xos16-g200.log"
 BACKLIGHT="/sys/class/leds/lcd-backlight/brightness"
@@ -16,8 +17,22 @@ read_value() {
 }
 
 write_value() {
-    [ -e "$1" ] || return 1
-    echo "$2" > "$1" 2>/dev/null
+    node="$1"
+    value="$2"
+
+    [ -e "$node" ] || {
+        log "SKIP missing node: $node"
+        return 1
+    }
+
+    if echo "$value" > "$node" 2>/dev/null; then
+        actual="$(read_value "$node")"
+        log "WRITE $node requested=$value actual=$actual"
+        [ "$actual" = "$value" ]
+    else
+        log "FAIL write $node value=$value"
+        return 1
+    fi
 }
 
 save_once() {
@@ -41,29 +56,32 @@ save_once() {
     done
 
     touch "$STATE/saved"
-    log "Saved original CPU policy and online states."
+    log "Saved original CPU policy and online states in $STATE."
 }
 
 restore_values() {
     [ -f "$STATE/saved" ] || return 0
     log "Restoring saved CPU settings."
 
-    # Bring originally-online CPUs back before restoring their policy.
     while read -r cpu online; do
         [ "$online" = "1" ] && write_value "/sys/devices/system/cpu/cpu$cpu/online" 1
     done < "$STATE/cpu_online"
 
     while read -r policy key value; do
-        node="/sys/devices/system/cpu/cpufreq/$policy/$([ "$key" = "governor" ] && echo scaling_governor || echo scaling_max_freq)"
+        if [ "$key" = "governor" ]; then
+            node="/sys/devices/system/cpu/cpufreq/$policy/scaling_governor"
+        else
+            node="/sys/devices/system/cpu/cpufreq/$policy/scaling_max_freq"
+        fi
         write_value "$node" "$value"
     done < "$STATE/values"
 
-    # Return originally-offline CPUs to their original state.
     while read -r cpu online; do
         [ "$online" = "0" ] && write_value "/sys/devices/system/cpu/cpu$cpu/online" 0
     done < "$STATE/cpu_online"
 
     rm -f "$STATE/saved" "$STATE/values" "$STATE/cpu_online"
+    log "Original CPU settings restored; state files removed."
 }
 
 apply_sleep_profile() {
@@ -72,7 +90,7 @@ apply_sleep_profile() {
 
     for cpu in 3 4 5 7; do
         node="/sys/devices/system/cpu/cpu$cpu/online"
-        [ -e "$node" ] && write_value "$node" 0
+        write_value "$node" 0
     done
 
     for policy in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -80,9 +98,10 @@ apply_sleep_profile() {
         write_value "$policy/scaling_governor" powersave
     done
 
-    # Caps are intentionally conservative and only applied when supported.
     write_value "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" 500000
     write_value "/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq" 725000
+
+    log "Screen-off profile result: online=$(read_value /sys/devices/system/cpu/online)"
 }
 
 display_state() {
@@ -103,6 +122,7 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
+log "Starting as uid=$(id -u 2>/dev/null); module=$MODDIR; state=$STATE"
 [ -r "$BACKLIGHT" ] || log "Warning: backlight node not readable: $BACKLIGHT"
 log "Started display polling loop."
 
