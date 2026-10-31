@@ -1,0 +1,9 @@
+#!/system/bin/sh
+LOG="/data/local/tmp/mahiru-sleep-xos16-g200/log.txt"
+
+if [ -f "$LOG" ]; then
+    cat "$LOG"
+else
+    echo "No MahiruSleep log found. Run getlog first."
+    exit 1
+fi
