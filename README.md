@@ -53,3 +53,23 @@ Initial XOS 16 / Helio G200 implementation. Runtime behaviour still requires on-
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Logging
+
+The original MahiruSleep-style `getlog` and `catlog` helpers are included under `system/bin`.
+
+After installation, run the logger from a root shell:
+
+```sh
+su -c 'sh /data/adb/modules/mahirusleep_xos16_g200/system/bin/getlog'
+```
+
+Leave it running while testing screen-off behaviour. In another root shell, retrieve the log with:
+
+```sh
+su -c 'sh /data/adb/modules/mahirusleep_xos16_g200/system/bin/catlog'
+```
+
+The log is written to `/data/local/tmp/mahiru-sleep-xos16-g200/log.txt`.
+
+The installer also prints the original `mahiru.art` ASCII banner through `customize.sh`.
