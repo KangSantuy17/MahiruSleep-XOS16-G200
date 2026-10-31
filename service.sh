@@ -17,4 +17,5 @@ echo $$ > "$MODDIR/service.pid"
 # Give Android time to finish booting.
 sleep 20
 
-"$MODDIR/scripts/sleep.sh" >> "$LOG" 2>&1
+# Files created through the GitHub contents API may not have executable mode.
+sh "$MODDIR/scripts/sleep.sh" >> "$LOG" 2>&1
