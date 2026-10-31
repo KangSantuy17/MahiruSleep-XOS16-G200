@@ -11,5 +11,3 @@ fi
 
 ui_print " "
 ui_print "Infinix X6885 | Helio G200 | XOS 16"
-ui_print "CPU screen-off profile only"
-ui_print "ZRAM and module-manager integration are untouched"
