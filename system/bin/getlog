@@ -1,0 +1,35 @@
+#!/system/bin/sh
+SCRIPT_DIR="${0%/*}"
+MODDIR="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)"
+STATE="$MODDIR/state"
+LOGDIR="/data/local/tmp/mahiru-sleep-xos16-g200"
+LOG="$LOGDIR/log.txt"
+
+mkdir -p "$LOGDIR"
+: > "$LOG"
+
+echo "MahiruSleep XOS16 G200 logger started."
+echo "Leave this running, turn the screen off for a few seconds, then run catlog."
+echo "Log file: $LOG"
+
+while :; do
+    {
+        echo "===== $(date) ====="
+        echo "Display: $(dumpsys power 2>/dev/null | grep -m 1 -E 'mWakefulness=|Display Power: state=')"
+        echo "CPUs online : $(cat /sys/devices/system/cpu/online 2>/dev/null)"
+        echo "CPUs offline: $(cat /sys/devices/system/cpu/offline 2>/dev/null)"
+        echo
+        for policy in /sys/devices/system/cpu/cpufreq/policy*; do
+            [ -d "$policy" ] || continue
+            echo "${policy##*/} governor : $(cat "$policy/scaling_governor" 2>/dev/null)"
+            echo "${policy##*/} max freq : $(cat "$policy/scaling_max_freq" 2>/dev/null)"
+        done
+        if [ -f "$STATE/saved" ]; then
+            echo "MahiruSleep state: sleeping profile saved/applied"
+        else
+            echo "MahiruSleep state: no active saved profile"
+        fi
+        echo
+    } >> "$LOG"
+    sleep 1
+done
